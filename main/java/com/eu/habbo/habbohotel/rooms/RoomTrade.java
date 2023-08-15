@@ -14,11 +14,16 @@ import com.eu.habbo.plugin.events.trading.TradeConfirmEvent;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
 import gnu.trove.set.hash.THashSet;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.*;
 import java.util.*;
 
 @Slf4j
 public class RoomTrade {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RoomTrade.class);
+
     //Configuration. Loaded from database & updated accordingly.
     public static boolean TRADING_ENABLED = true;
     public static boolean TRADING_REQUIRES_PERK = true;
@@ -205,7 +210,7 @@ public class RoomTrade {
                         for (HabboItem item : userOne.getItems()) {
 
                             item.setUserId(userTwoId);
-                            int catalogItemId = getCatalogItemIdFromItem(item.getId());
+                            int catalogItemId = item.getBaseItem().getId();
 
                             if (manager.isItemRare(catalogItemId)) {
                                 //TODO add check when trading 1 non cooled item against cooled item to not impact the economy only if or maybe weight difference ?
@@ -256,7 +261,8 @@ public class RoomTrade {
                         for (HabboItem item : userTwo.getItems()) {
 
                             item.setUserId(userOneId);
-                            int catalogItemId = getCatalogItemIdFromItem(item.getId());
+                            int catalogItemId = item.getBaseItem().getId();
+                            LOGGER.info("BASEIDDDD " + item.getBaseItem().getId() + " !");
 
                             if (manager.isItemRare(catalogItemId)) {
                                 synchronized(cooldownMap) {
@@ -434,13 +440,9 @@ public class RoomTrade {
             return 0;
         }
     }
-    public int getCatalogItemIdFromItem(int itemId) {
-        return fetchFromDatabase("SELECT item_id FROM items WHERE id = ? LIMIT 1", "item_id", itemId, Integer.class);
-    }
     public double getRareWeight(int itemId) {
         return fetchFromDatabase("SELECT current_weight FROM rares WHERE item_id = ? LIMIT 1", "current_weight", itemId, Double.class);
     }
-
     public void incrementTradeCountIfRare(int itemId) {
 
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();

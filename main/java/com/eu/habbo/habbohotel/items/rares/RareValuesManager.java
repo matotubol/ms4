@@ -22,7 +22,6 @@ public class RareValuesManager {
     private RareValuesManager() {
         initialize();
     }
-
     public static RareValuesManager getInstance() {
         return instance;
     }
@@ -35,7 +34,6 @@ public class RareValuesManager {
         }
 
         LOGGER.info("RareValuesManager -> Loaded " + rareItemIds.size() + " rares! (" + (System.currentTimeMillis() - millis) + " MS)");
-
     }
 
     private void fetchAllRareDataFromDatabase() {
@@ -54,7 +52,6 @@ public class RareValuesManager {
             LOGGER.error("Caught SQL exception", e);
         }
     }
-
 
     public boolean isItemRare(int itemId) {
         return rareItemIds.contains(itemId);
