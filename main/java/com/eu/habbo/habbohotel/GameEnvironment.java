@@ -58,7 +58,7 @@ public class GameEnvironment {
     private PollManager pollManager;
     private SubscriptionManager subscriptionManager;
     private CalendarManager calendarManager;
-    private RareValuesManager rareValuesInitializer;
+    private RareValuesManager rareValuesManager;
     public void load() throws Exception {
         log.info("GameEnvironment -> Loading...");
 
@@ -83,7 +83,7 @@ public class GameEnvironment {
         this.craftingManager = new CraftingManager();
         this.pollManager = new PollManager();
         this.calendarManager = new CalendarManager();
-        this.rareValuesInitializer = RareValuesManager.getInstance();
+        this.rareValuesManager = RareValuesManager.getInstance();
         this.roomManager.loadPublicRooms();
         this.navigatorManager.loadNavigator();
 
