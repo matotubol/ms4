@@ -224,7 +224,7 @@ public class RoomTrade {
 
                                     RareItemData details = userOneValues.getOrDefault(catalogItemId, new RareItemData(0,0.0, 0));
                                     // Update weight
-                                    details.setWeight(getRareWeight(catalogItemId));
+                                    details.setWeight(manager.getRareWeight(catalogItemId));
                                     // Update count
                                     details.setCount(details.getCount() + 1);
                                     // Put the updated details back into the map
@@ -275,7 +275,7 @@ public class RoomTrade {
 
                                     RareItemData details = userOneValues.getOrDefault(catalogItemId, new RareItemData(0,0.0, 0));
                                     // Update weight
-                                    details.setWeight(getRareWeight(catalogItemId));
+                                    details.setWeight(manager.getRareWeight(catalogItemId));
                                     // Update count
                                     details.setCount(details.getCount() + 1);
                                     // Put the updated details back into the map
@@ -440,9 +440,6 @@ public class RoomTrade {
             return 0;
         }
     }
-    public double getRareWeight(int itemId) {
-        return fetchFromDatabase("SELECT current_weight FROM rares WHERE item_id = ? LIMIT 1", "current_weight", itemId, Double.class);
-    }
     public void incrementTradeCountIfRare(int itemId) {
 
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
@@ -498,6 +495,10 @@ public class RoomTrade {
             updateStmt.setInt(3, itemId);
             updateStmt.executeUpdate();
 
+            //Update current_weight in memory.
+            RareValuesManager manager = RareValuesManager.getInstance();
+            manager.updateRareWeight(itemId, weight);
+
         } catch (SQLException e) {
             log.error("Caught SQL exception", e);
         }
@@ -530,7 +531,7 @@ public class RoomTrade {
         }
     }
     private double calculateDynamicValue(int itemId) {
-        double baseValue = getRareWeight(itemId);
+        double baseValue = manager.getRareWeight(itemId);
         double circulation = getCirculation(itemId);
         double supply = manager.getRareSupplyCount(itemId);
 
