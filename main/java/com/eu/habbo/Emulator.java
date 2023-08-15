@@ -139,8 +139,8 @@ public final class Emulator {
             Emulator.getPluginManager().fireEvent(new EmulatorConfigUpdatedEvent());
             Emulator.texts = new TextsManager();
             new CleanerThread();
-            //Emulator.gameServer = new GameServer(getConfig().getValue("game.host", "127.0.0.1"), getConfig().getInt("game.port", 30000));
-            //Emulator.rconServer = new RCONServer(getConfig().getValue("rcon.host", "127.0.0.1"), getConfig().getInt("rcon.port", 30001));
+            Emulator.gameServer = new GameServer(getConfig().getValue("game.host", "127.0.0.1"), getConfig().getInt("game.port", 30000));
+            Emulator.rconServer = new RCONServer(getConfig().getValue("rcon.host", "127.0.0.1"), getConfig().getInt("rcon.port", 30001));
             Emulator.gameEnvironment = new GameEnvironment();
             Emulator.gameEnvironment.load();
             Emulator.gameServer.initializePipeline();

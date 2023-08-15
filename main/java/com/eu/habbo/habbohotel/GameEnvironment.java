@@ -15,6 +15,7 @@ import com.eu.habbo.habbohotel.guides.GuideManager;
 import com.eu.habbo.habbohotel.guilds.GuildManager;
 import com.eu.habbo.habbohotel.hotelview.HotelViewManager;
 import com.eu.habbo.habbohotel.items.ItemManager;
+import com.eu.habbo.habbohotel.items.rares.RareValuesManager;
 import com.eu.habbo.habbohotel.modtool.ModToolManager;
 import com.eu.habbo.habbohotel.modtool.ModToolSanctions;
 import com.eu.habbo.habbohotel.modtool.WordFilter;
@@ -57,7 +58,7 @@ public class GameEnvironment {
     private PollManager pollManager;
     private SubscriptionManager subscriptionManager;
     private CalendarManager calendarManager;
-
+    private RareValuesManager rareValuesManager;
     public void load() throws Exception {
         log.info("GameEnvironment -> Loading...");
 
@@ -82,6 +83,8 @@ public class GameEnvironment {
         this.craftingManager = new CraftingManager();
         this.pollManager = new PollManager();
         this.calendarManager = new CalendarManager();
+        this.rareValuesManager = new RareValuesManager();
+        this.rareValuesManager.initialize();
 
         this.roomManager.loadPublicRooms();
         this.navigatorManager.loadNavigator();

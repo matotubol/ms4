@@ -3,6 +3,7 @@ package com.eu.habbo.habbohotel.rooms;
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
+import com.eu.habbo.habbohotel.items.rares.RareValuesManager;
 import com.eu.habbo.messages.outgoing.MessageComposer;
 import com.eu.habbo.messages.outgoing.inventory.FurniListInvalidateComposer;
 import com.eu.habbo.messages.outgoing.inventory.UnseenItemsComposer;
@@ -29,12 +30,16 @@ public class RoomTrade {
 
     private final Room room;
 
-    public RoomTrade(Habbo userOne, Habbo userTwo, Room room) {
+    @Getter
+    public RareValuesManager rareValuesManager;
+
+    public RoomTrade(Habbo userOne, Habbo userTwo, Room room, RareValuesManager rareValuesManager) {
         this.users = new ArrayList<>();
 
         this.users.add(new RoomTradeUser(userOne));
         this.users.add(new RoomTradeUser(userTwo));
         this.room = room;
+        this.rareValuesManager = rareValuesManager;
     }
 
     public void start() {
@@ -218,7 +223,7 @@ public class RoomTrade {
                             item.setUserId(userTwoId);
                             int catalogItemId = getCatalogItemIdFromItem(item.getId());
 
-                            if (isItemRare(catalogItemId)) {
+                            if (rareValuesManager.isItemRare(catalogItemId)) {
                                 //TODO add check when trading 1 non cooled item against cooled item to not impact the economy only if or maybe weight difference ?
                                 synchronized(cooldownMap) {
                                     Long cooldownEnd = cooldownMap.get(item.getId());
@@ -269,7 +274,7 @@ public class RoomTrade {
                             item.setUserId(userOneId);
                             int catalogItemId = getCatalogItemIdFromItem(item.getId());
 
-                            if (isItemRare(catalogItemId)) {
+                            if (rareValuesManager.isItemRare(catalogItemId)) {
                                 synchronized(cooldownMap) {
                                     Long cooldownEnd = cooldownMap.get(item.getId());
 
@@ -448,9 +453,9 @@ public class RoomTrade {
 
     //TODO cache isItemRare on start of the emulator since this wont change frequently.
     //TODO maybe also add the dynamic value there and only change it after trade or buy.
-    public boolean isItemRare(int itemId) {
-        return Boolean.TRUE.equals(fetchFromDatabase("SELECT 1 FROM rare_values WHERE item_id = ? LIMIT 1", "1", itemId, Boolean.class));
-    }
+//    public boolean isItemRare(int itemId) {
+//        return Boolean.TRUE.equals(fetchFromDatabase("SELECT 1 FROM rare_values WHERE item_id = ? LIMIT 1", "1", itemId, Boolean.class));
+//    }
 
     public int getCatalogItemIdFromItem(int itemId) {
         return fetchFromDatabase("SELECT item_id FROM items WHERE id = ? LIMIT 1", "item_id", itemId, Integer.class);
