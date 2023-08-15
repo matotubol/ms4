@@ -84,8 +84,6 @@ public class GameEnvironment {
         this.pollManager = new PollManager();
         this.calendarManager = new CalendarManager();
         this.rareValuesManager = RareValuesManager.getInstance();
-        this.rareValuesManager.initialize();
-
         this.roomManager.loadPublicRooms();
         this.navigatorManager.loadNavigator();
 
