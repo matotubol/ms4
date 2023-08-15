@@ -13,7 +13,6 @@ import com.eu.habbo.messages.outgoing.trading.*;
 import com.eu.habbo.plugin.events.trading.TradeConfirmEvent;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
 import gnu.trove.set.hash.THashSet;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import java.sql.*;
 import java.util.*;
@@ -31,6 +30,8 @@ public class RoomTrade {
     private final Room room;
 
     public RareItemData RareItemData;
+    RareValuesManager manager = RareValuesManager.getInstance();
+
 
     public RoomTrade(Habbo userOne, Habbo userTwo, Room room, RareItemData rareItemData) {
         this.users = new ArrayList<>();
@@ -141,7 +142,6 @@ public class RoomTrade {
     }
 
     boolean tradeItems() {
-        RareValuesManager manager = RareValuesManager.getInstance();
 
         for (RoomTradeUser roomTradeUser : this.users) {
             for (HabboItem item : roomTradeUser.getItems()) {
@@ -434,20 +434,9 @@ public class RoomTrade {
             return 0;
         }
     }
-
-    //TODO cache isItemRare on start of the emulator since this wont change frequently.
-    //TODO maybe also add the dynamic value there and only change it after trade or buy.
-//    public boolean isItemRare(int itemId) {
-//        return Boolean.TRUE.equals(fetchFromDatabase("SELECT 1 FROM rare_values WHERE item_id = ? LIMIT 1", "1", itemId, Boolean.class));
-//    }
-
     public int getCatalogItemIdFromItem(int itemId) {
         return fetchFromDatabase("SELECT item_id FROM items WHERE id = ? LIMIT 1", "item_id", itemId, Integer.class);
     }
-    public int getRareSupplyCount(int itemId) {
-        return fetchFromDatabase("SELECT supply FROM rares WHERE item_id = ?", "supply", itemId, Integer.class);
-    }
-
     public double getRareWeight(int itemId) {
         return fetchFromDatabase("SELECT current_weight FROM rares WHERE item_id = ? LIMIT 1", "current_weight", itemId, Double.class);
     }
@@ -541,7 +530,7 @@ public class RoomTrade {
     private double calculateDynamicValue(int itemId) {
         double baseValue = getRareWeight(itemId);
         double circulation = getCirculation(itemId);
-        double supply = getRareSupplyCount(itemId);
+        double supply = manager.getRareSupplyCount(itemId);
 
         // Calculate the scarcity for the item
         double scarcity = (supply - circulation) / supply;
