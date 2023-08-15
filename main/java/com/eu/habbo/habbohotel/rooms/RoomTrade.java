@@ -4,6 +4,7 @@ import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.habbohotel.items.rares.RareValuesManager;
+import com.eu.habbo.habbohotel.items.rares.RareItemData;
 import com.eu.habbo.messages.outgoing.MessageComposer;
 import com.eu.habbo.messages.outgoing.inventory.FurniListInvalidateComposer;
 import com.eu.habbo.messages.outgoing.inventory.UnseenItemsComposer;
@@ -17,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.sql.*;
 import java.util.*;
 
-
 @Slf4j
 public class RoomTrade {
     //Configuration. Loaded from database & updated accordingly.
@@ -30,16 +30,14 @@ public class RoomTrade {
 
     private final Room room;
 
-    @Getter
-    public RareValuesManager rareValuesManager;
+    public RareItemData RareItemData;
 
-    public RoomTrade(Habbo userOne, Habbo userTwo, Room room, RareValuesManager rareValuesManager) {
+    public RoomTrade(Habbo userOne, Habbo userTwo, Room room, RareItemData rareItemData) {
         this.users = new ArrayList<>();
-
         this.users.add(new RoomTradeUser(userOne));
         this.users.add(new RoomTradeUser(userTwo));
         this.room = room;
-        this.rareValuesManager = rareValuesManager;
+        this.RareItemData = rareItemData;
     }
 
     public void start() {
@@ -141,25 +139,10 @@ public class RoomTrade {
             this.room.stopTrade(this);
         }
     }
-    @Getter
-    public static class rareItemDetails {
-        private double weight;
-        private int count;
-
-        public rareItemDetails(double weight, int count) {
-            this.weight = weight;
-            this.count = count;
-        }
-        public void setWeight(double weight) {
-            this.weight = weight;
-        }
-
-        public void setCount(int count) {
-            this.count = count;
-        }
-    }
 
     boolean tradeItems() {
+        RareValuesManager manager = RareValuesManager.getInstance();
+
         for (RoomTradeUser roomTradeUser : this.users) {
             for (HabboItem item : roomTradeUser.getItems()) {
                 if (roomTradeUser.getHabbo().getInventory().getItemsComponent().getHabboItem(item.getId()) != null) {
@@ -211,7 +194,8 @@ public class RoomTrade {
 
                         //TODO get the itemsCount from userTwoValue instead of new MAP not necessary
                         Map<Integer, Integer> rareItemsCountUserOne = new HashMap<>();
-                        Map<Integer, rareItemDetails> userOneValues = new HashMap<>();
+                        Map<Integer, RareItemData> userOneValues = new HashMap<>();
+
 
                         // Clear out expired cool downs for rares
                         synchronized(cooldownMap) {
@@ -223,7 +207,7 @@ public class RoomTrade {
                             item.setUserId(userTwoId);
                             int catalogItemId = getCatalogItemIdFromItem(item.getId());
 
-                            if (rareValuesManager.isItemRare(catalogItemId)) {
+                            if (manager.isItemRare(catalogItemId)) {
                                 //TODO add check when trading 1 non cooled item against cooled item to not impact the economy only if or maybe weight difference ?
                                 synchronized(cooldownMap) {
                                     Long cooldownEnd = cooldownMap.get(item.getId());
@@ -233,7 +217,7 @@ public class RoomTrade {
                                         continue;
                                     }
 
-                                    rareItemDetails details = userOneValues.getOrDefault(catalogItemId, new rareItemDetails(0.0, 0));
+                                    RareItemData details = userOneValues.getOrDefault(catalogItemId, new RareItemData(0,0.0, 0));
                                     // Update weight
                                     details.setWeight(getRareWeight(catalogItemId));
                                     // Update count
@@ -262,7 +246,7 @@ public class RoomTrade {
                         }
 
                         Map<Integer, Integer> rareItemsCountUserTwo = new HashMap<>();
-                        Map<Integer, rareItemDetails> userTwoValues = new HashMap<>();
+                        Map<Integer, RareItemData> userTwoValues = new HashMap<>();
 
                         // Clear out expired cool downs for rares
                         synchronized(cooldownMap) {
@@ -274,7 +258,7 @@ public class RoomTrade {
                             item.setUserId(userOneId);
                             int catalogItemId = getCatalogItemIdFromItem(item.getId());
 
-                            if (rareValuesManager.isItemRare(catalogItemId)) {
+                            if (manager.isItemRare(catalogItemId)) {
                                 synchronized(cooldownMap) {
                                     Long cooldownEnd = cooldownMap.get(item.getId());
 
@@ -283,7 +267,7 @@ public class RoomTrade {
                                         continue;
                                     }
 
-                                    rareItemDetails details = userTwoValues.getOrDefault(catalogItemId, new rareItemDetails(0.0, 0));
+                                    RareItemData details = userOneValues.getOrDefault(catalogItemId, new RareItemData(0,0.0, 0));
                                     // Update weight
                                     details.setWeight(getRareWeight(catalogItemId));
                                     // Update count
@@ -563,12 +547,11 @@ public class RoomTrade {
         double scarcity = (supply - circulation) / supply;
 
         // Adjust the base weight based on scarcity (this is just a simple adjustment)
-        double dynamicValue = baseValue * (1 + 0.1 * scarcity); // Adjust by 10% of scarcity
 
-        return dynamicValue;
+        return baseValue * (1 + 0.1 * scarcity);
     }
 
-    public void compareDynamicValues(Map<Integer, rareItemDetails> userOneItems, Map<Integer, rareItemDetails> userTwoItems) {
+    public void compareDynamicValues(Map<Integer, RareItemData> userOneItems, Map<Integer, RareItemData> userTwoItems) {
         adjustWeights(userOneItems, userTwoItems);
 
         // Update the weights in the database
@@ -580,7 +563,7 @@ public class RoomTrade {
         }
     }
 
-    private void adjustWeights(Map<Integer, rareItemDetails> userOneItems, Map<Integer, rareItemDetails> userTwoItems) {
+    private void adjustWeights(Map<Integer, RareItemData> userOneItems, Map<Integer, RareItemData> userTwoItems) {
         // Calculate the dynamic value for each item
         Map<Integer, Double> userOneDynamicValues = new HashMap<>();
         for (Integer itemId : userOneItems.keySet()) {
@@ -613,18 +596,18 @@ public class RoomTrade {
             distributeAdjustment(userTwoItems, -adjustment);
         }
     }
-    private void distributeAdjustment(Map<Integer, rareItemDetails> items, double totalAdjustment) {
+    private void distributeAdjustment(Map<Integer, RareItemData> items, double totalAdjustment) {
         double totalItemCount = 0;
 
         // Calculate the total item count considering duplicates
-        for (rareItemDetails details : items.values()) {
+        for (RareItemData details : items.values()) {
             totalItemCount += details.getCount();
         }
 
         double individualAdjustment = totalAdjustment / totalItemCount;
 
         for (Integer itemId : items.keySet()) {
-            rareItemDetails details = items.get(itemId);
+            RareItemData details = items.get(itemId);
             double currentWeight = details.getWeight();
 
             details.setWeight(currentWeight + individualAdjustment * details.getCount());

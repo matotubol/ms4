@@ -22,6 +22,8 @@ import com.eu.habbo.habbohotel.items.interactions.games.tag.InteractionTagField;
 import com.eu.habbo.habbohotel.items.interactions.games.tag.InteractionTagPole;
 import com.eu.habbo.habbohotel.items.interactions.pets.*;
 import com.eu.habbo.habbohotel.items.interactions.wired.extra.WiredBlob;
+import com.eu.habbo.habbohotel.items.rares.RareItemData;
+import com.eu.habbo.habbohotel.items.rares.RareValuesManager;
 import com.eu.habbo.habbohotel.messenger.MessengerBuddy;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.pets.Pet;
@@ -295,6 +297,9 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
     private boolean cycleOdd;
     @Getter
     private long cycleTimestamp;
+
+    private RareValuesManager rareValuesManager;
+    private RareItemData rareItemData;
 
     public Room(ResultSet set) throws SQLException {
         this.id = set.getInt("id");
@@ -871,11 +876,10 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
     }
 
     public void startTrade(Habbo userOne, Habbo userTwo) {
-        RoomTrade trade = new RoomTrade(userOne, userTwo, this);
+        RoomTrade trade = new RoomTrade(userOne, userTwo, this, rareItemData);
         synchronized (this.activeTrades) {
             this.activeTrades.add(trade);
         }
-
         trade.start();
     }
 

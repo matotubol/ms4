@@ -9,15 +9,20 @@ import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class RareValuesManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(RareValuesManager.class);
+    @Getter
+    private static final RareValuesManager instance = new RareValuesManager();
     private final Set<Integer> rareItemIds = new HashSet<>();
 
     // Initialization method to load rare items from the database
     public void initialize() {
+
         long millis = System.currentTimeMillis();
         List<Integer> fetchedRareItemIds = fetchAllRareItemIdsFromDatabase();
         rareItemIds.addAll(fetchedRareItemIds);
