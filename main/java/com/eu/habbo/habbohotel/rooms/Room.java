@@ -298,7 +298,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
     @Getter
     private long cycleTimestamp;
 
-    private RareValuesManager rareValuesManager;
+    private RareValuesManager rareValuesInitializer;
     private RareItemData rareItemData;
 
     public Room(ResultSet set) throws SQLException {
