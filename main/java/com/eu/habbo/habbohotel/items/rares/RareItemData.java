@@ -5,7 +5,7 @@ public class RareItemData {
     
     private double weight;
     private int count;
-    private int rareItemId;
+    private final int rareItemId;
     public RareItemData(int rareItemId, double weight, int count) {
         this.rareItemId = rareItemId;
         this.weight = weight;

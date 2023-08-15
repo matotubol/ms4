@@ -1,34 +1,40 @@
 package com.eu.habbo.habbohotel.items.rares;
 
 import com.eu.habbo.Emulator;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.HashSet;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.*;
+
+@Getter
 public class RareValuesManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(RareValuesManager.class);
-    @Getter
     private static final RareValuesManager instance = new RareValuesManager();
     private final Set<Integer> rareItemIds = new HashSet<>();
 
-    // Initialization method to load rare items from the database
-    public void initialize() {
+    // Private constructor ensures this class can only be instantiated once
+    private RareValuesManager() {
+        initialize();
+    }
 
+    // Singleton pattern - provides the single instance of this class
+    public static RareValuesManager getInstance() {
+        return instance;
+    }
+
+    // Made this private to ensure it's only called once during object creation
+    private void initialize() {
         long millis = System.currentTimeMillis();
         List<Integer> fetchedRareItemIds = fetchAllRareItemIdsFromDatabase();
         rareItemIds.addAll(fetchedRareItemIds);
-
         LOGGER.info("RareValuesManager -> Loaded " + fetchedRareItemIds.size() + " rares! (" + (System.currentTimeMillis() - millis) + " MS)");
     }
+
     private List<Integer> fetchAllRareItemIdsFromDatabase() {
         List<Integer> fetchedItemIds = new ArrayList<>();
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
