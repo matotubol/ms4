@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class RoomTrade {
@@ -29,9 +30,7 @@ public class RoomTrade {
     public static boolean TRADING_REQUIRES_PERK = true;
 
     private final List<RoomTradeUser> users;
-
-    private static final Map<Integer, Long> cooldownMap = new HashMap<>();
-
+    private static final ConcurrentHashMap<Integer, Long> cooldownMap = new ConcurrentHashMap<>();
     private final Room room;
 
     public RareItemData RareItemData;
@@ -199,13 +198,11 @@ public class RoomTrade {
 
                         //TODO get the itemsCount from userTwoValue instead of new MAP not necessary
                         Map<Integer, Integer> rareItemsCountUserOne = new HashMap<>();
-                        Map<Integer, RareItemData> userOneValues = new HashMap<>();
+                        ConcurrentHashMap<Integer, RareItemData> userOneValues = new ConcurrentHashMap<>();
 
 
                         // Clear out expired cool downs for rares
-                        synchronized(cooldownMap) {
                             cooldownMap.entrySet().removeIf(entry -> System.currentTimeMillis() > entry.getValue());
-                        }
 
                         for (HabboItem item : userOne.getItems()) {
 
@@ -213,14 +210,14 @@ public class RoomTrade {
                             int catalogItemId = item.getBaseItem().getId();
 
                             if (manager.isItemRare(catalogItemId)) {
+
                                 //TODO add check when trading 1 non cooled item against cooled item to not impact the economy only if or maybe weight difference ?
-                                synchronized(cooldownMap) {
                                     Long cooldownEnd = cooldownMap.get(item.getId());
 
-                                    if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
-                                        // Item is on cool down, skip to the next item
-                                        continue;
-                                    }
+//                                    if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+//                                        // Item is on cool down, skip to the next item
+//                                        continue;
+//                                    }
 
                                     RareItemData details = userOneValues.getOrDefault(catalogItemId, new RareItemData(0,0.0, 0));
                                     // Update weight
@@ -235,7 +232,6 @@ public class RoomTrade {
                                     // Set the cool down for this item
                                     cooldownMap.put(item.getId(), System.currentTimeMillis() + (5 * 60 * 1000)); // 5 minutes in milliseconds
 
-                                }
                             }
 
                             statement.setInt(1, userTwoId);
@@ -262,16 +258,15 @@ public class RoomTrade {
 
                             item.setUserId(userOneId);
                             int catalogItemId = item.getBaseItem().getId();
-                            LOGGER.info("BASEIDDDD " + item.getBaseItem().getId() + " !");
 
                             if (manager.isItemRare(catalogItemId)) {
                                 synchronized(cooldownMap) {
                                     Long cooldownEnd = cooldownMap.get(item.getId());
 
-                                    if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
-                                        // Item is on cool down, skip to the next item
-                                        continue;
-                                    }
+//                                    if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+//                                        // Item is on cool down, skip to the next item
+//                                        continue;
+//                                    }
 
                                     RareItemData details = userOneValues.getOrDefault(catalogItemId, new RareItemData(0,0.0, 0));
                                     // Update weight
@@ -485,7 +480,7 @@ public class RoomTrade {
     }
 
     private void updateWeight(int itemId, double weight) throws SQLException {
-        String updateQuery = "UPDATE rares AS r1 JOIN rares AS r2 ON r1.item_id = r2.item_id SET r1.current_weight = (r2.current_weight + ?) / 2, r1.last_update = ? WHERE r1.item_id = ?";
+        String updateQuery = "UPDATE rares SET current_weight = (current_weight + ?) / 2, last_update = ? WHERE item_id = ?";
 
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
              PreparedStatement updateStmt = connection.prepareStatement(updateQuery)) {
@@ -572,18 +567,18 @@ public class RoomTrade {
 
         double weightDifference = userOneAggregateWeight - userTwoAggregateWeight;
 
-        // Ensure the weightDifference doesn't exceed the threshold of 0.1
-        //TODO Make this database configurable?
-        if (Math.abs(weightDifference) > 0.1) {
-            weightDifference = Math.signum(weightDifference) * 0.1;
+        // Calculate the adjustment based on the original weightDifference
+        double adjustment = weightDifference * 0.05;
+
+        // Ensure the adjustment doesn't exceed the threshold of 0.05 in either direction
+        if (Math.abs(adjustment) > 0.05) {
+            adjustment = Math.signum(adjustment) * 0.05;
         }
 
         if (weightDifference > 0) {
-            double adjustment = weightDifference * 0.02;
             distributeAdjustment(userOneItems, -adjustment);
             distributeAdjustment(userTwoItems, adjustment);
         } else {
-            double adjustment = -weightDifference * 0.02;
             distributeAdjustment(userOneItems, adjustment);
             distributeAdjustment(userTwoItems, -adjustment);
         }

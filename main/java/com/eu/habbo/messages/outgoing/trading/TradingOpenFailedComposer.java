@@ -13,6 +13,7 @@ public class TradingOpenFailedComposer extends MessageComposer {
     public static final int ROOM_TRADING_NOT_ALLOWED = 6;
     public static final int YOU_ALREADY_TRADING = 7;
     public static final int TARGET_ALREADY_TRADING = 8;
+    public static final int PLAYER_JUST_JOINED_LOADING = 100;
 
     private final int code;
     private final String username;

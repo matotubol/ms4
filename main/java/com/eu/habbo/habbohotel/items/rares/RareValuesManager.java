@@ -12,13 +12,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
 public class RareValuesManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(RareValuesManager.class);
     private static final RareValuesManager instance = new RareValuesManager();
 
-    private final Map<Integer, InitializerData> rareItemsMap = new HashMap<>();
+    private final ConcurrentHashMap<Integer, InitializerData> rareItemsMap = new ConcurrentHashMap<>();
 
     private RareValuesManager() {
         initialize();

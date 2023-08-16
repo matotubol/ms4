@@ -12,7 +12,7 @@ import com.eu.habbo.messages.outgoing.trading.TradingOpenFailedComposer;
 public class OpenTradingEvent extends MessageHandler {
     @Override
     public void handle() {
-        if (Emulator.getIntUnixTimestamp() - this.client.getHabbo().getHabboStats().getLastTradeTimestamp() > 10) {
+        if (Emulator.getIntUnixTimestamp() - this.client.getHabbo().getHabboStats().getLastTradeTimestamp() > 4) {
             this.client.getHabbo().getHabboStats().setLastTradeTimestamp(Emulator.getIntUnixTimestamp());
             int userId = this.packet.readInt();
 
@@ -60,6 +60,7 @@ public class OpenTradingEvent extends MessageHandler {
                     room.startTrade(this.client.getHabbo(), targetUser);
                 }
             }
-        }
+        } else
+            this.client.sendResponse(new TradingOpenFailedComposer(TradingOpenFailedComposer.ROOM_TRADING_NOT_ALLOWED));
     }
 }
