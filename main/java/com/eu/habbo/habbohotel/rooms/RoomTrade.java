@@ -5,6 +5,7 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.habbohotel.items.rares.RareValuesManager;
 import com.eu.habbo.habbohotel.items.rares.RareItemData;
+import com.eu.habbo.habbohotel.items.rares.TradingAdjustmentService;
 import com.eu.habbo.messages.outgoing.MessageComposer;
 import com.eu.habbo.messages.outgoing.inventory.FurniListInvalidateComposer;
 import com.eu.habbo.messages.outgoing.inventory.UnseenItemsComposer;
@@ -35,6 +36,8 @@ public class RoomTrade {
 
     public RareItemData RareItemData;
     RareValuesManager manager = RareValuesManager.getInstance();
+
+    private final TradingAdjustmentService tradingService = new TradingAdjustmentService();
 
 
     public RoomTrade(Habbo userOne, Habbo userTwo, Room room, RareItemData rareItemData) {
@@ -294,7 +297,7 @@ public class RoomTrade {
                             }
                         }
 
-                        compareDynamicValues(userOneValues, userTwoValues);
+                        tradingService.adjustAndPersistWeights(userOneValues, userTwoValues);
 
                         // Insert into rares_trading_feed for userOne's items
                         insertRareTradingFeed(tradeId, userOneId, rareStatement, rareItemsCountUserOne);
@@ -459,172 +462,5 @@ public class RoomTrade {
             rareStatement.addBatch();
         }
     }
-    public double getCirculation(int itemId) {
-        return fetchFromDatabase("SELECT COUNT(item_id) as item_count FROM items WHERE item_id = ?", "item_count", itemId, Integer.class);
-
-    }
-    private void insertWeight(int itemId, double weight) throws SQLException {
-        String insertQuery = "INSERT INTO rare_values (item_id, weight, last_update) VALUES (?, ?, ?)";
-
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
-             PreparedStatement insertStmt = connection.prepareStatement(insertQuery)) {
-
-            insertStmt.setInt(1, itemId);
-            insertStmt.setDouble(2, weight);
-            insertStmt.setInt(3, Emulator.getIntUnixTimestamp());
-            insertStmt.executeUpdate();
-
-        } catch (SQLException e) {
-            log.error("Caught SQL exception", e);
-        }
-    }
-
-    private void updateWeight(int itemId, double weight) throws SQLException {
-        String updateQuery = "UPDATE rares SET current_weight = (current_weight + ?) / 2, last_update = ? WHERE item_id = ?";
-
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
-             PreparedStatement updateStmt = connection.prepareStatement(updateQuery)) {
-
-            updateStmt.setDouble(1, weight);
-            updateStmt.setInt(2, Emulator.getIntUnixTimestamp());
-            updateStmt.setInt(3, itemId);
-            updateStmt.executeUpdate();
-
-            //Update current_weight in memory.
-            RareValuesManager manager = RareValuesManager.getInstance();
-            manager.updateRareWeight(itemId, weight);
-
-        } catch (SQLException e) {
-            log.error("Caught SQL exception", e);
-        }
-    }
-    public void insertOrUpdateWeight(int itemId, double weight) {
-        final int MAX_RETRIES = 3; // or any other reasonable number
-        final int DEADLOCK_SQL_ERROR_CODE = 1213;
-        int attempts = 0;
-
-        while (attempts < MAX_RETRIES) {
-            try {
-                insertWeight(itemId, weight);
-                updateWeight(itemId, weight);
-
-                break; // if successful, break out of the loop
-            } catch (SQLException e) {
-                if (e.getErrorCode() == DEADLOCK_SQL_ERROR_CODE) {
-                    attempts++;
-                    if (attempts >= MAX_RETRIES) {
-                        log.error("Failed to update weight after " + MAX_RETRIES + " attempts due to deadlock.", e);
-                    }
-                    try {
-                        Thread.sleep(1000); // wait for 1 second before retrying
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException("Thread was interrupted during sleep", ie);
-                    }
-                }
-            }
-        }
-    }
-    private double calculateDynamicValue(int itemId) {
-        double baseValue = manager.getRareWeight(itemId);
-        double circulation = getCirculation(itemId);
-        double supply = manager.getRareSupplyCount(itemId);
-
-        // Calculate the scarcity for the item
-        double scarcity = (supply - circulation) / supply;
-
-        // Adjust the base weight based on scarcity (this is just a simple adjustment)
-
-        return baseValue * (1 + 0.1 * scarcity);
-    }
-
-    public void compareDynamicValues(Map<Integer, RareItemData> userOneItems, Map<Integer, RareItemData> userTwoItems) {
-        adjustWeights(userOneItems, userTwoItems);
-
-        // Update the weights in the database
-        for (Integer itemId : userOneItems.keySet()) {
-            insertOrUpdateWeight(itemId, userOneItems.get(itemId).getWeight());
-        }
-        for (Integer itemId : userTwoItems.keySet()) {
-            insertOrUpdateWeight(itemId, userTwoItems.get(itemId).getWeight());
-        }
-    }
-
-    private void adjustWeights(Map<Integer, RareItemData> userOneItems, Map<Integer, RareItemData> userTwoItems) {
-        // Calculate the dynamic value for each item
-        Map<Integer, Double> userOneDynamicValues = new HashMap<>();
-        for (Integer itemId : userOneItems.keySet()) {
-            userOneDynamicValues.put(itemId, calculateDynamicValue(itemId) * userOneItems.get(itemId).getCount());
-        }
-
-        Map<Integer, Double> userTwoDynamicValues = new HashMap<>();
-        for (Integer itemId : userTwoItems.keySet()) {
-            userTwoDynamicValues.put(itemId, calculateDynamicValue(itemId) * userTwoItems.get(itemId).getCount());
-        }
-
-        double userOneAggregateWeight = userOneDynamicValues.values().stream().mapToDouble(Double::doubleValue).sum();
-        double userTwoAggregateWeight = userTwoDynamicValues.values().stream().mapToDouble(Double::doubleValue).sum();
-
-        double weightDifference = userOneAggregateWeight - userTwoAggregateWeight;
-
-        // Calculate the adjustment based on the original weightDifference
-        double adjustment = weightDifference * 0.05;
-
-        // Ensure the adjustment doesn't exceed the threshold of 0.05 in either direction
-        if (Math.abs(adjustment) > 0.05) {
-            adjustment = Math.signum(adjustment) * 0.05;
-        }
-
-        if (weightDifference > 0) {
-            distributeAdjustment(userOneItems, -adjustment);
-            distributeAdjustment(userTwoItems, adjustment);
-        } else {
-            distributeAdjustment(userOneItems, adjustment);
-            distributeAdjustment(userTwoItems, -adjustment);
-        }
-    }
-    private void distributeAdjustment(Map<Integer, RareItemData> items, double totalAdjustment) {
-        double totalItemCount = 0;
-
-        // Calculate the total item count considering duplicates
-        for (RareItemData details : items.values()) {
-            totalItemCount += details.getCount();
-        }
-
-        double individualAdjustment = totalAdjustment / totalItemCount;
-
-        for (Integer itemId : items.keySet()) {
-            RareItemData details = items.get(itemId);
-            double currentWeight = details.getWeight();
-
-            details.setWeight(currentWeight + individualAdjustment * details.getCount());
-        }
-    }
-
-    private <T> T fetchFromDatabase(String query, String columnName, int itemId, Class<T> type) {
-        T value = null;
-
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
-             PreparedStatement stmt = connection.prepareStatement(query)) {
-
-            stmt.setInt(1, itemId);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    if (type == Integer.class) {
-                        value = type.cast(rs.getInt(columnName));
-                    } else if (type == Double.class) {
-                        value = type.cast(rs.getDouble(columnName));
-                    } else if (type == Boolean.class) {
-                        value = type.cast(rs.getBoolean(columnName));
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            log.error("Caught SQL exception", e);
-        }
-        return value;
-    }
-
 }
 

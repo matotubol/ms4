@@ -24,6 +24,7 @@ import com.eu.habbo.habbohotel.items.interactions.pets.*;
 import com.eu.habbo.habbohotel.items.interactions.wired.extra.WiredBlob;
 import com.eu.habbo.habbohotel.items.rares.RareItemData;
 import com.eu.habbo.habbohotel.items.rares.RareValuesManager;
+import com.eu.habbo.habbohotel.items.rares.TradingAdjustmentService;
 import com.eu.habbo.habbohotel.messenger.MessengerBuddy;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.pets.Pet;
